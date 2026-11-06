@@ -1,27 +1,40 @@
+
+import os
+
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Chuỗi kết nối MySQL (Đổi root:password và localhost/port theo máy của cậu)
-# Định dạng: mysql+pymysql://<username>:<password>@<host>:<port>/<db_name>
-DATABASE_URL = "mysql+pymysql://root:123456@localhost:3306/team_project_db"
+load_dotenv()
 
-# Khởi tạo Engine kết nối
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL chưa được cấu hình trong file .env")
+
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,  # Tự động kiểm tra kết nối sống trước khi query
-    echo=True            # In các câu lệnh SQL ra terminal khi dev
+    connect_args=(
+        {"check_same_thread": False}
+        if DATABASE_URL.startswith("sqlite:")
+        else {}
+    ),
+    pool_pre_ping=True,
+    echo=False
 )
 
-# Khởi tạo SessionMaker
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
 
-# Khởi tạo Base class cho các Model kế thừa
 Base = declarative_base()
 
-# Dependency cung cấp Session DB cho từng Request trong FastAPI
+
 def get_db():
     db = SessionLocal()
+
     try:
         yield db
     finally:
